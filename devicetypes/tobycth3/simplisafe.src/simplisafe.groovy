@@ -2,7 +2,8 @@
  *  SimpliSafe integration for SmartThings
  *
  *  Copyright 2015 Felix Gorodishter
- *	Modifications by Toby Harris - 6/13/2017
+ *  Modifications by Scott Silence
+ *	Modifications by Toby Harris - 2/6/2018
  *
  *  Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  *  in compliance with the License. You may obtain a copy of the License at:
@@ -16,19 +17,17 @@
  */
 
 preferences {
-	input(name: "username", type: "text", title: "Username", required: "true", description: "Your SimpliSafe username")
-	input(name: "password", type: "password", title: "Password", required: "true", description: "Your SimpliSafe password")
+	input(name: "username", type: "text", title: "Username", required: "true", description: "SimpliSafe Username")
+	input(name: "password", type: "password", title: "Password", required: "true", description: "SimpliSafe Password")
+	input(name: "ssversion", type: "enum", title: "SimpliSafe Version", required: "true", description: "Alarm system version", options: ["ss1", "ss2", "ss3"])
 }
 
-metadata {
-	// Automatically generated. Make future change here.
+metadata {	
 	definition (name: "SimpliSafe", namespace: "tobycth3", author: "Toby Harris") {
 		capability "Alarm"
 		capability "Polling"
-		capability "Acceleration Sensor"
         capability "Contact Sensor"
 		capability "Carbon Monoxide Detector"
-        capability "Lock"
 		capability "Presence Sensor"
 		capability "Smoke Detector"
         capability "Temperature Measurement"
@@ -37,19 +36,7 @@ metadata {
 		command "away"
 		command "off"
 		command "update_state"
-		command "update_temp"
-		attribute "events", "string"
-		attribute "recent_alarm", "string" 
-		attribute "recent_fire", "string" 
-		attribute "recent_co", "string" 
-		attribute "recent_flood", "string" 
-		attribute "warnings", "string"        
 	}
-
-	simulator {
-		// TODO: define status and reply messages here
-	}
-
 
 tiles(scale: 2) {
     multiAttributeTile(name:"alarm", type: "generic", width: 6, height: 4){
@@ -88,405 +75,225 @@ tiles(scale: 2) {
 		state ("home", label:"home", action:"home", icon: "st.Home.home4", backgroundColor: "#008CC1", nextState: "pending")
 		state ("pending", label:"pending", icon: "st.Home.home4", backgroundColor: "#ffffff")
 	}
-    
-		standardTile("recent_alarm", "device.contact", inactiveLabel: false, width: 2, height: 2) {
-			state "closed", label:'Alarm', icon: "st.security.alarm.clear", backgroundColor: "#50C65F"
-			state "open", label:'ALARM', icon: "st.security.alarm.alarm", backgroundColor: "#d44556"
-		}
-		standardTile("freeze", "device.freeze_status", width: 2, height: 2, canChangeIcon: false, inactiveLabel: true, canChangeBackground: false) {
-			state ("no alert", label:'Temp', action:"update_temp", icon: "st.alarm.temperature.normal", backgroundColor: "#50C65F", nextState: "updating")
-			state ("alert", label:'TEMP', action:"update_temp", icon: "st.alarm.temperature.freeze", backgroundColor: "#d44556", nextState: "updating")
-			state ("updating", label:"updating", icon: "st.alarm.temperature.normal", backgroundColor: "#ffffff")
-		}
-		standardTile("recent_fire", "device.smoke", inactiveLabel: false, width: 2, height: 2) {
-			state "clear", label:'Fire', icon: "st.alarm.smoke.clear", backgroundColor: "#50C65F"
-			state "detected", label:'FIRE', icon: "st.alarm.smoke.smoke", backgroundColor: "#d44556"
-		}
-		standardTile("recent_co", "device.carbonMonoxide", inactiveLabel: false, width: 2, height: 2) {
-			state "clear", label:'CO2', icon: "st.alarm.carbon-monoxide.clear", backgroundColor: "#50C65F"
-			state "detected", label:'CO2', icon: "st.alarm.carbon-monoxide.carbon-monoxide", backgroundColor: "#d44556"
-		}
-		standardTile("recent_flood", "device.water", inactiveLabel: false, width: 2, height: 2) {
-			state "dry", label:'Flood', icon: "st.alarm.water.dry", backgroundColor: "#50C65F"
-			state "wet", label:'FLOOD', icon: "st.alarm.water.wet", backgroundColor: "#d44556"
-		}
-		standardTile("warnings", "device.acceleration", width: 2, height: 2, canChangeIcon: false, inactiveLabel: true, canChangeBackground: false) {
-			state ("inactive", label:'Base', action:"update_state", icon: "st.Kids.kids15", backgroundColor: "#50C65F", nextState: "updating")
-			state ("active", label:'BASE', action:"update_state", icon: "st.Kids.kids15", backgroundColor: "#d44556", nextState: "updating")
-			state ("updating", label:"updating", icon: "st.Kids.kids15", backgroundColor: "#ffffff")
-		}
-		standardTile("refresh", "device.alarm", inactiveLabel: false, decoration: "flat", width: 2, height: 2) {
-			state "default", action:"polling.poll", icon:"st.secondary.refresh"
-		}
+	standardTile("refresh", "device.alarm", inactiveLabel: false, decoration: "flat", width: 2, height: 2) {
+		state "default", action:"update_state", icon:"st.secondary.refresh"
+	}
 
 		main(["alarm"])
-		details(["alarm","off", "away", "home", "recent_alarm", "freeze", "recent_fire", "recent_co", "recent_flood", "warnings", "refresh"])
+		details(["alarm","off", "away", "home", "refresh"])
 	}
 }
 
 def installed() {
   init()
-  }
+}
 
 def updated() {
   unschedule()
   init()
-  }
+}
   
 def init() {
+	log.info "Setting up Schedule (every 5 minutes)..."
 runEvery5Minutes(poll)
-  }
-
-// parse events into attributes
-def parse(String description) {
-	log.debug "Parsing '${description}'"
-	// TODO: handle 'alarm' attribute
-
 }
 
 // handle commands
 def off() {
-	log.info "Executing 'off'"
-	api('set-state', [state: off, mobile: 1]) { response ->
-	//	log.trace "Set-state response $response.status $response.data"
-	}
-	// refresh status
-	poll()
+	log.info "Setting SimpliSafe mode to 'Off'"
+	setState ('off')
 }
 
 def home() { 
-	log.info "Executing 'home'"
-	api('set-state', [state: home, mobile: 1]) { response ->
-	//	log.trace "Set-state response $response.status $response.data"
-	}
-	// refresh status
-	poll()	
+	log.info "Setting SimpliSafe mode to 'Home'"
+	setState ('home')
 }
 
 def away() {
-	log.info "Executing 'away'"
-	api('set-state', [state: away, mobile: 1]) { response ->
-	//	log.trace "Set-state response $response.status $response.data"
-	}
-	// refresh status
-	poll()
+	log.info "Setting SimpliSafe mode to 'Away'"
+	setState ('away')
 }
 
 def update_state() {
-		log.info "Updating state from base station"
-	api('get-state', []) { response ->
-	//	log.trace "Get-state response $response.status $response.data"
-	}
-	// refresh status
-	poll()   
-  }
-	
-def update_temp() {
-		log.info "Updating temperature from base station"
-	api('update-freeze', []) { response ->
-	//	log.trace "Update-freeze response $response.status $response.data"
-	}
-	// refresh status
+	log.info "Refreshing SimpliSafe state..."
 	poll()
 }
 
-def setAlarmMode(mode) {
-	// TODO
-}
-
-def strobe() {
-	log.info "Executing 'strobe'"
-	// TODO: handle 'strobe' command
-}
-
-def siren() {
-	log.info "Executing 'siren'"
-	// TODO: handle 'siren' command
-}
-
-def both() {
-	log.info "Executing 'both'"
-	// TODO: handle 'both' command
+def setState (alState){
+	//Check Auth first
+	checkAuth()
+    def timeout = false;
+    
+    if (alState == "off")
+    {
+    	try {
+        	httpPost([ uri: getAPIUrl("alarmOff"), headers: state.auth.respAuthHeader, contentType: "application/json; charset=utf-8" ])
+        } catch (e) {
+        	timeout = true;
+        	log.debug "Alarm SET to OFF Error: $e"
+        }
+    }
+    else if (alState == "home")
+    {
+    	try {
+        	httpPost([ uri: getAPIUrl("alarmHome"), headers: state.auth.respAuthHeader, contentType: "application/json; charset=utf-8" ])
+        } catch (e) {
+        	timeout = true;
+        	log.debug "Alarm SET to HOME Error: $e"
+        }
+    }
+    else if (alState == "away")
+    {
+    	try {
+        	httpPost([ uri: getAPIUrl("alarmAway"), headers: state.auth.respAuthHeader, contentType: "application/json; charset=utf-8" ])
+        } catch (e) {
+        	timeout = true;
+        	log.debug "Alarm SET to AWAY Error: $e"
+        }
+    }
+    else
+    {
+        log.info "Invalid state requested."
+    }
+    
+    //If not a timeout, we can poll immediately, otherwise wait 10 seconds
+    if (!timeout) {
+    	poll()
+    } else {
+    	//There was a timeout, so we can't poll right away. Wait 10 seconds and try polling.
+    	runIn(10, poll)
+    }
 }
 
 def poll() {
-	log.info "Executing 'poll'"
+	//Check Auth first
+	checkAuth()
 
-	log.info "Executing 'status'"
-	api('status', []) { response ->
-	//	log.trace "Status response $response.status $response.data"
+    log.info "Executing polling..."
+   
+	httpGet ([uri: getAPIUrl("refresh"), headers: state.auth.respAuthHeader, contentType: "application/json; charset=utf-8"]) { response ->
+        sendEvent(name: "alarm", value: response.data.subscription.location.system.alarmState)
+        log.info "Alarm State1: $response.data.subscription.location.system.alarmState"
+    }
+    //log.info "Alarm State2: $response"
+    //apiLogout()
+}
 
-		if (response.data.return_code < 1) {
-			return
-		}
+def apiLogin() {
+	//Login to the system
+    log.info "Executing Login..."
+   
+   	//Define the login Auth Body and Header Information
+    def authBody = [ "grant_type":"password",
+    				"device_id":"WebApp",
+                    "username":settings.username,
+                    "password": settings.password ]                    
+    def authHeader = [ "Authorization":"Basic NGRmNTU2MjctNDZiMi00ZTJjLTg2NmItMTUyMWIzOTVkZWQyLjEtMC0wLldlYkFwcC5zaW1wbGlzYWZlLmNvbTo="	]
+    
+    try {
+        httpPost([ uri: getAPIUrl("initAuth"), headers: authHeader, contentType: "application/json; charset=utf-8", body: authBody ]) { response ->
+        	state.auth = response.data
+            state.auth.respAuthHeader = ["Authorization":state.auth.token_type + " " + state.auth.access_token]
+            state.auth.tokenExpiry = now() + 3600000
+        }
+ 	} catch (e) {
+    	//state.token = 
+    }
+    
+    //Check for valid UID, and if not get it
+    if (!state.uid)
+   	{
+    	getUserId()
+   	}
+    
+    //Check for valid Subscription ID, and if not get it
+    //Might be able to expand this to multiple systems
+    if (!state.subscriptionId)
+    {
+    	getSubscriptionId()
+    }
+}
 
-		def location = response.data.location
+def getUserId() {
+	//check auth and get uid    
+    httpGet ([uri: getAPIUrl("authCheck"), headers: state.auth.respAuthHeader, contentType: "application/json; charset=utf-8"]) { response ->
+        state.uid = response.data.userId
+    }
+    log.info "User ID: $state.uid"
+}
 
-		def new_state = location.system.state
-		def old_state = device.currentValue("alarm")
-		def state_changed = new_state != old_state
+def getSubscriptionId() {
+	//get subscription id
+    httpGet ([uri: getAPIUrl("subId"), headers: state.auth.respAuthHeader, contentType: "application/json; charset=utf-8"]) { response ->
+    	String tsid = response.data.subscriptions.location.sid
+		state.subscriptionId = tsid.substring(1, tsid.length() - 1)
+    }
+    log.info "Subscription ID: $state.subscriptionId"
+}
 
-        def new_recent_alarm = location.monitoring.recent_alarm.text
-		def old_recent_alarm = device.currentValue("recent_alarm")
-		def recent_alarm_changed = new_recent_alarm != old_recent_alarm
-
-        def new_recent_fire = location.monitoring.recent_fire.text
-		def old_recent_fire = device.currentValue("recent_fire")
-		def recent_fire_changed = new_recent_fire != old_recent_fire
-
-        def new_recent_co = location.monitoring.recent_co.text
-		def old_recent_co = device.currentValue("recent_co")
-		def recent_co_changed = new_recent_co != old_recent_co
-
-		def new_recent_flood = location.monitoring.recent_flood.text
-		def old_recent_flood = device.currentValue("recent_flood")
-		def recent_flood_changed = new_recent_flood != old_recent_flood
-
-        def new_freeze = location.monitoring.freeze.temp
-		if (new_freeze != "?" || null) { 
-        def old_freeze = device.currentValue("temperature")
-        def freeze_changed = new_freeze != old_freeze }
-		else { 
-		log.debug "No freeze sensor data received - aborting" 
-		new_freeze = "0"
-		def old_freeze = "0"
-		def freeze_changed = new_freeze != old_freeze } 
-
-        def new_warnings = location.monitoring.warnings
-        if (new_warnings == null) { new_warnings = "No Alert" }
-		def old_warnings = device.currentValue("warnings")
-		def warnings_changed = new_warnings != old_warnings
-
-
-		def alarm_presence = ['off':'present', 'home':'present', 'away':'not present']
-		def presence_state_changed = device.currentValue("presence") != alarm_presence.getAt(new_state)
-
-		def alarm_armed = ['off':'unlocked', 'home':'locked', 'away':'locked']
-		def armed_state_changed = device.currentValue("lock") != alarm_armed.getAt(new_state)
-
-		log.debug "Alarm State: $new_state"
-		log.debug "Alarm: $new_recent_alarm"
-		log.debug "Fire: $new_recent_fire"
-		log.debug "CO2: $new_recent_co"
-		log.debug "Flood: $new_recent_flood"
-		log.debug "Freeze: $new_freeze"
-		log.debug "Warnings: $new_warnings"
-
-		sendEvent(name: 'presence', value: alarm_presence.getAt(new_state), displayed: presence_state_changed, isStateChange: presence_state_changed)
-		sendEvent(name: 'lock', value: alarm_armed.getAt(new_state), displayed: armed_state_changed, isStateChange: armed_state_changed)
-		sendEvent(name: 'alarm', value: new_state, displayed: state_changed, isStateChange: state_changed)
-		sendEvent(name: 'recent_alarm', value: new_recent_alarm, displayed: recent_alarm_changed, isStateChange: recent_alarm_changed)
-		sendEvent(name: 'recent_fire', value: new_recent_fire, displayed: recent_fire_changed, isStateChange: recent_fire_changed)
-		sendEvent(name: 'recent_co', value: new_recent_co, displayed: recent_co_changed, isStateChange: recent_co_changed)
-		sendEvent(name: 'recent_flood', value: new_recent_flood, displayed: recent_flood_changed, isStateChange: recent_flood_changed)
-		sendEvent(name: 'temperature', value: new_freeze, displayed: freeze_changed, isStateChange: freeze_changed)
-		sendEvent(name: 'warnings', value: new_warnings, displayed: warnings_changed, isStateChange: warnings_changed)
-
-	if (new_recent_alarm != "No Alert") { 
-	sendEvent(name: 'contact', value: "open", displayed: recent_alarm_changed, isStateChange: recent_alarm_changed) }
-		else {
-	sendEvent(name: 'contact', value: "closed", displayed: recent_alarm_changed, isStateChange: recent_alarm_changed)
-		}
-	if (new_recent_fire != "No Alert") { 
-	sendEvent(name: 'smoke', value: "detected", displayed: recent_fire_changed, isStateChange: recent_fire_changed) }
-		else {
-	sendEvent(name: 'smoke', value: "clear", displayed: recent_fire_changed, isStateChange: recent_fire_changed)
-		}
-	if (new_recent_co != "No Alert") { 
-	sendEvent(name: 'carbonMonoxide', value: "detected", displayed: recent_co_changed, isStateChange: recent_co_changed) }
-		else {
-	sendEvent(name: 'carbonMonoxide', value: "clear", displayed: recent_co_changed, isStateChange: recent_co_changed)
-		}
-	if (new_recent_flood != "No Alert") { 
-	sendEvent(name: 'water', value: "wet", displayed: recent_flood_changed, isStateChange: recent_flood_changed) }
-		else {
-	sendEvent(name: 'water', value: "dry", displayed: recent_flood_changed, isStateChange: recent_flood_changed)
-		}
-	if (new_freeze <= 41) { 
-	sendEvent(name: 'freeze_status', value: "alert", displayed: freeze_changed, isStateChange: freeze_changed) }
-		else {
-	sendEvent(name: 'freeze_status', value: "no alert", displayed: freeze_changed, isStateChange: freeze_changed)
-		}		
-	if (new_warnings != "No Alert") { 
-	sendEvent(name: 'acceleration', value: "active", displayed: warnings_changed, isStateChange: warnings_changed) }
-		else {
-	sendEvent(name: 'acceleration', value: "inactive", displayed: warnings_changed, isStateChange: warnings_changed)
-		}
- }
-
-	log.info "Executing 'events'" 
-	api('events', []) { response ->
-	//	log.trace "Events response $response.status $response.data"
-
-		if (response.data.return_code < 1) {
-			return
-		} 
+def checkAuth()
+{
+	log.info "Checking to see if time has expired...."
         
-		def raw_event_desc = response.data.events.event_desc[0]
-		if (raw_event_desc.find(/System Armed|System Disarmed/)) {
-			def parsed_event_desc = raw_event_desc.findAll(/Armed|Disarmed|[(]\w*\s+\w+[)]/)
-			parsed_event_desc = parsed_event_desc.join(' in ')
-			state.parsed_event_desc = parsed_event_desc.replaceAll("[()]","") + " - "
-		} else if (raw_event_desc.size() <=26 ) {
-			state.parsed_event_desc = raw_event_desc + " - "
-			} else {
-			def parsed_event_desc = raw_event_desc.take(26) + "... "	
-			state.parsed_event_desc = parsed_event_desc
-		}
-		
-		def new_events = state.parsed_event_desc + response.data.events.event_time[0] + " " + response.data.events.event_date[0]
-		def old_events = device.currentValue("events")
-		def events_changed = new_events != old_events
-      
-		log.debug "Events: $new_events"
-        
-		sendEvent(name: 'events', value: new_events, displayed: events_changed, isStateChange: events_changed)       
- }        
- 	// log out session	
-	logout()
+    //If no State Auth, or now Token Expiry, or time has expired, need to relogin
+    //log.info "Expiry time: $state.auth.tokenExpiry"
+    if (!state.auth || !state.auth.tokenExpiry || now() > state.auth.tokenExpiry) {    
+    	log.info"Token Time has expired, excecuting re-login..."
+        apiLogin()
+    }
+    
+	//Check Auth
+    httpGet ([uri: getAPIUrl("authCheck"), headers: state.auth.respAuthHeader, contentType: "application/json; charset=utf-8"]) { response ->
+        return response.status        
+    }
 }
 
-def api(method, args = [], success = {}) {
-	log.info "Executing 'api'"
-
-	if(!isLoggedIn()) {
-		log.debug "Need to login"
-		login(method, args, success)
-		return
-	}
-
-	// SimpliSafe requires this funkiness
-	def existing_args = args
-	def required_payload = [
-		no_persist: 0,
-		XDEBUG_SESSION_START: 'session_name',
-	]
-
-	// append it to the args
-	if (existing_args != [])
-		{
-		args = existing_args + required_payload
-		} 
-		else {
-		args = required_payload
-		}
-
-	def methods = [
-		'locations': [uri: "https://simplisafe.com/mobile/$state.auth.uid/locations", type: 'post'],
-		'status': [uri: "https://simplisafe.com/mobile/$state.auth.uid/sid/$state.locationID/dashboard", type: 'post'],
-		'events': [uri: "https://simplisafe.com/mobile/$state.auth.uid/sid/$state.locationID/events", type: 'post'],
-		'get-state': [uri: "https://simplisafe.com/mobile/$state.auth.uid/sid/$state.locationID/get-state", type: 'post'],
-		'set-state': [uri: "https://simplisafe.com/mobile/$state.auth.uid/sid/$state.locationID/set-state", type: 'post'],
-		'update-freeze': [uri: "https://simplisafe.com/account2/$state.auth.uid/sid/$state.locationID/control-panel/utility/update-freeze", type: 'post'],
-		'logout': [uri: "https://simplisafe.com/mobile/logout", type: 'post']
-	]
-
-	def request = methods.getAt(method)
-
-	log.debug "Starting $method : $args"
-	doRequest(request.uri, args, request.type, success)
+def apiLogout() {
+    httpDelete([ uri: getAPIUrl("initAuth"), headers: state.auth.respAuthHeader, contentType: "application/json; charset=utf-8" ]) { response ->
+        if (response.status == 200) {
+            state.subscriptionId = null
+            log.info "Logged out from API."
+        }
+    }
 }
 
-// Need to be logged in before this is called. So don't call this. Call api.
-def doRequest(uri, args, type, success) {
-	log.debug "Calling $type : $uri : $args"
-
-	def params = [
-		uri: uri,
-		headers: [
-			'Cookie': state.cookiess
-		],
-		body: args
-	]
-
-//	log.trace params
-
-	try {
-		if (type == 'post') {
-			httpPost(params, success)
-		} else if (type == 'get') {
-			httpGet(params, success)
-		}
-
-	} catch (e) {
-		log.debug "something went wrong: $e"
-	}
+def getTime()
+{
+	def tDate = new Date()
+    return tDate.getTime()
 }
 
-def login(method = null, args = [], success = {}) { 
-	log.info "Executing 'login'"
-	def params = [
-		uri: 'https://simplisafe.com/mobile/login',
-		body: [
-			name: settings.username, 
-			pass: settings.password, 
-			device_name: "SimpliSafe", 
-			device_uuid: "SimpliSafe",
-			version: 1200,
-			no_persist: 1,
-			XDEBUG_SESSION_START: 'session_name'
-		]
-	]
-
-	state.cookiess = ''
-
-	httpPost(params) {response ->
-	//	log.trace "Login response, $response.status $response.data"
-	//	log.trace response.headers
-
-		state.auth = response.data
-
-		// set the expiration to 10 minutes
-		state.auth.expires_at = new Date().getTime() + 600000;
-
-		response.getHeaders('Set-Cookie').each {
-			String cookie = it.value.split(';|,')[0]
-		//	log.trace "Adding cookie to collection: $cookie"
-			state.cookiess = state.cookiess+cookie+';'
-		}
-	//	log.trace "cookies: $state.cookiess"
-
-		// get location ID
-		locations()
-
-		api(method, args, success)
-
-	}
-}
-
-def locations() {
-	log.info "Executing 'locations'"
-
-	api('locations', []) { response ->
-	//	log.trace "Locations response $response.status $response.data"
-
-	if (response.data.num_locations < 1) {
-			return
-		}
-
-		def locations = response.data.locations
-		state.locationID = locations.keySet()[0]
- }
-}
-
-def logout() { 
-	log.info "Executing 'logout'"
-	api('logout', []) { response ->
-	//	log.trace "Logout response $response.status $response.data"
-	}	
-	state.auth = false		
-}
-
-def isLoggedIn() {
-	if(!state.auth) {
-		log.debug "No state.auth"
-		return false
-	}
-
-//	log.trace state.auth.uid
-
-	def now = new Date().getTime();
-//	log.trace now
-//	log.trace state.auth.expires_at
-	return state.auth.expires_at > now
+def getAPIUrl(urlType) {
+	if (urlType == "initAuth")
+    {
+    	return "https://api.simplisafe.com/v1/api/token"
+    }
+    else if (urlType == "authCheck")
+    {
+    	return "https://api.simplisafe.com/v1/api/authCheck"
+    }
+    else if (urlType == "subId" )
+    {
+    	return "https://api.simplisafe.com/v1/users/$state.uid/subscriptions?activeOnly=false"
+    }
+    else if (urlType == "alarmOff" )
+    {
+    	return "https://api.simplisafe.com/v1/$settings.ssversion/subscriptions/$state.subscriptionId/state/off"
+    }
+    else if (urlType == "alarmHome" )
+    {
+    	return "https://api.simplisafe.com/v1/$settings.ssversion/subscriptions/$state.subscriptionId/state/home"
+    }
+    else if (urlType == "alarmAway" )
+    {
+    	return "https://api.simplisafe.com/v1/$settings.ssversion/subscriptions/$state.subscriptionId/state/away"
+    }
+    else if (urlType == "refresh")
+    {
+    	return "https://api.simplisafe.com/v1/subscriptions/$state.subscriptionId/"
+    }
+    else
+    {
+    	log.info "Invalid URL type"
+    }
 }
