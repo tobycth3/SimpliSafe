@@ -187,6 +187,12 @@ def poll() {
         log.info "Alarm State1: $response.data.subscription.location.system.alarmState"
 		log.info "Temperature: $response.data.subscription.location.system.temperature"
     }
+	
+	httpGet ([uri: getAPIUrl("events"), headers: state.auth.respAuthHeader, contentType: "application/json; charset=utf-8"]) { response ->
+        sendEvent(name: "events", value: response.data.events.info)
+        log.info "Events: $response.data.events.info"
+    }
+	
     //log.info "Alarm State2: $response"
     //apiLogout()
 }
@@ -332,6 +338,10 @@ def getAPIUrl(urlType) {
     else if (urlType == "refresh")
     {
     	return "https://api.simplisafe.com/v1/subscriptions/$state.subscriptionId/"
+    }
+    else if (urlType == "events")
+    {
+    	return "https://api.simplisafe.com/v1/subscriptions/$state.subscriptionId/events?numEvents=1"
     }
     else
     {
