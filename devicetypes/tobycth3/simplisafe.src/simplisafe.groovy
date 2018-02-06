@@ -243,9 +243,17 @@ def checkAuth()
     }
     
 	//Check Auth
-    httpGet ([uri: getAPIUrl("authCheck"), headers: state.auth.respAuthHeader, contentType: "application/json; charset=utf-8"]) { response ->
-        return response.status        
+    try {
+        httpGet ([uri: getAPIUrl("authCheck"), headers: state.auth.respAuthHeader, contentType: "application/json; charset=utf-8"]) { response ->
+            return response.status        
+        }
+    } catch (e) {
+        state.clear()
+        apiLogin()
+        httpGet ([uri: getAPIUrl("authCheck"), headers: state.auth.respAuthHeader, contentType: "application/json; charset=utf-8"]) { response ->
+            return response.status        
     }
+}
 }
 
 def apiLogout() {
@@ -278,15 +286,36 @@ def getAPIUrl(urlType) {
     }
     else if (urlType == "alarmOff" )
     {
-    	return "https://api.simplisafe.com/v1/$settings.ssversion/subscriptions/$state.subscriptionId/state/off"
+    	if (settings.ssversion == "ss3") 
+        {
+    		return "https://api.simplisafe.com/v1/$settings.ssversion/subscriptions/$state.subscriptionId/state/off"
+        }
+        else
+        {
+        	return "https://api.simplisafe.com/v1/subscriptions/$state.subscriptionId/state?state=off"
+        }       
     }
     else if (urlType == "alarmHome" )
     {
-    	return "https://api.simplisafe.com/v1/$settings.ssversion/subscriptions/$state.subscriptionId/state/home"
+   		if (settings.ssversion == "ss3") 
+        {
+    		return "https://api.simplisafe.com/v1/$settings.ssversion/subscriptions/$state.subscriptionId/state/home"
+        }
+        else
+        {
+        	return "https://api.simplisafe.com/v1/subscriptions/$state.subscriptionId/state?state=home"
+        }
     }
     else if (urlType == "alarmAway" )
     {
-    	return "https://api.simplisafe.com/v1/$settings.ssversion/subscriptions/$state.subscriptionId/state/away"
+   		if (settings.ssversion == "ss3") 
+        {
+    		return "https://api.simplisafe.com/v1/$settings.ssversion/subscriptions/$state.subscriptionId/state/away"
+        }
+        else
+        {
+        	return "https://api.simplisafe.com/v1/subscriptions/$state.subscriptionId/state?state=away"
+        }
     }
     else if (urlType == "refresh")
     {
