@@ -75,12 +75,22 @@ tiles(scale: 2) {
 		state ("home", label:"home", action:"home", icon: "st.Home.home4", backgroundColor: "#008CC1", nextState: "pending")
 		state ("pending", label:"pending", icon: "st.Home.home4", backgroundColor: "#ffffff")
 	}
+		valueTile("temperature", "device.temperature", width: 2, height: 2, canChangeIcon: false, inactiveLabel: true, canChangeBackground: false) {
+			state ("temperature", label:'${currentValue}', unit: "dF", icon: "st.alarm.temperature.normal", 
+			backgroundColors: [
+			[value: 0, color: "#ffffff"],
+			[value: 41, color: "#d44556"],
+			[value: 70, color: "#50C65F"],
+			[value: 95, color: "#d44556"]
+				]
+			)
+		}
 	standardTile("refresh", "device.alarm", inactiveLabel: false, decoration: "flat", width: 2, height: 2) {
 		state "default", action:"update_state", icon:"st.secondary.refresh"
 	}
 
 		main(["alarm"])
-		details(["alarm","off", "away", "home", "refresh"])
+		details(["alarm","off", "away", "home", "temperature", "refresh"])
 	}
 }
 
@@ -173,7 +183,9 @@ def poll() {
    
 	httpGet ([uri: getAPIUrl("refresh"), headers: state.auth.respAuthHeader, contentType: "application/json; charset=utf-8"]) { response ->
         sendEvent(name: "alarm", value: response.data.subscription.location.system.alarmState)
+		sendEvent(name: "temperature", value: response.data.subscription.location.system.temperature)
         log.info "Alarm State1: $response.data.subscription.location.system.alarmState"
+		log.info "Temperature: $response.data.subscription.location.system.temperature"
     }
     //log.info "Alarm State2: $response"
     //apiLogout()
