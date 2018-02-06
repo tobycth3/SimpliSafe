@@ -2,9 +2,9 @@
  *  SimpliSafe Monitor
  *
  *  Author: toby@cth3.com
- *  Date: 4/5/16
+ *  Date: 2/6/2018
  *
- *  Monitors and controlls the state of a SimpliSafe alarm system, syncs with Smart Home Monitor and can turn on/off switchs based on SimpliSafe state.
+ *  Monitors and controls the state of a SimpliSafe alarm system, syncs with Smart Home Monitor and can turn on/off switches based on SimpliSafe state.
  *  Works in conjunction with SimpliSafe Alarm Integration device type.
  */
 
@@ -28,11 +28,11 @@ preferences {
 	input "alarmtile", "capability.switch", title: "Select switches", multiple: true, required: false  } 
   
   section("Turn on switchs when SimpliSafe state matches") {
-    input "alarmon", "enum", title: "Select on state", multiple: true, required: false, metadata:[values:["off", "away", "home"]]
+    input "alarmon", "enum", title: "Select on state", multiple: true, required: false, metadata:[values:["OFF", "HOME", "AWAY"]]
   }
   
   section("Turn off switchs when SimpliSafe state matches") {
-    input "alarmoff", "enum", title: "Select off state", multiple: true, required: false, metadata:[values:["off", "away", "home"]]
+    input "alarmoff", "enum", title: "Select off state", multiple: true, required: false, metadata:[values:["OFF", "HOME", "AWAY"]]
   }
    
 	section("Notifications"){
@@ -240,7 +240,7 @@ def alarmstateoff() {
 // TODO - centralize somehow
 private getalarmOff() {
 	def result = false
-	if (state.alarmstate == "off") {
+	if (state.alarmstate == "OFF") {
 	result = true }
 	log.trace "alarmOff = $result"
 	result
@@ -248,7 +248,7 @@ private getalarmOff() {
 
 private getalarmAway() {
 	def result = false
-	if (state.alarmstate == "away") {
+	if (state.alarmstate == "AWAY") {
 	result = true }
 	log.trace "alarmAway = $result"
 	result
@@ -256,7 +256,7 @@ private getalarmAway() {
 
 private getalarmHome() {
 	def result = false
-	if (state.alarmstate == "home") {
+	if (state.alarmstate == "HOME") {
 	result = true }
 	log.trace "alarmHome = $result"
 	result
