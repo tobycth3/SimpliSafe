@@ -193,6 +193,10 @@ def poll() {
         log.info "Events: $response.data.events.info"
     }
 	
+	def alarm_state = device.currentValue("alarm")
+	def alarm_presence = ['OFF':'present', 'HOME':'present', 'AWAY':'not present']
+		sendEvent(name: 'presence', value: alarm_presence.getAt(alarm_state))
+	
     //log.info "Alarm State2: $response"
     //apiLogout()
 }
