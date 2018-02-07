@@ -2,7 +2,7 @@
  *  SimpliSafe Monitor
  *
  *  Author: toby@cth3.com
- *  Date: 2/6/2018
+ *  Date: 2/7/2018
  *
  *  Monitors and controls the state of a SimpliSafe alarm system, syncs with Smart Home Monitor and can turn on/off switches based on SimpliSafe state.
  *  Works in conjunction with SimpliSafe Alarm Integration device type.
@@ -240,7 +240,7 @@ def alarmstateoff() {
 // TODO - centralize somehow
 private getalarmOff() {
 	def result = false
-	if (state.alarmstate == "OFF") {
+	if (state.alarmstate == "OFF" | state.alarmstate == "off") {
 	result = true }
 	log.trace "alarmOff = $result"
 	result
@@ -248,7 +248,7 @@ private getalarmOff() {
 
 private getalarmAway() {
 	def result = false
-	if (state.alarmstate == "AWAY") {
+	if (state.alarmstate == "AWAY" | state.alarmstate == "away") {
 	result = true }
 	log.trace "alarmAway = $result"
 	result
@@ -256,7 +256,7 @@ private getalarmAway() {
 
 private getalarmHome() {
 	def result = false
-	if (state.alarmstate == "HOME") {
+	if (state.alarmstate == "HOME" | state.alarmstate == "home") {
 	result = true }
 	log.trace "alarmHome = $result"
 	result
