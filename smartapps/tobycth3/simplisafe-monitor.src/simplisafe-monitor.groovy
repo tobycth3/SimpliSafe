@@ -28,11 +28,11 @@ preferences {
 	input "alarmtile", "capability.switch", title: "Select switches", multiple: true, required: false  } 
   
   section("Turn on switchs when SimpliSafe state matches") {
-    input "alarmon", "enum", title: "Select on state", multiple: true, required: false, metadata:[values:["OFF", "HOME", "AWAY"]]
+    input "alarmon", "enum", title: "Select on state", multiple: true, required: false, metadata:[values:["off", "home", "away"]]
   }
   
   section("Turn off switchs when SimpliSafe state matches") {
-    input "alarmoff", "enum", title: "Select off state", multiple: true, required: false, metadata:[values:["OFF", "HOME", "AWAY"]]
+    input "alarmoff", "enum", title: "Select off state", multiple: true, required: false, metadata:[values:["off", "home", "away"]]
   }
    
 	section("Notifications"){
@@ -69,7 +69,8 @@ def updatestate() {
 
 def shmaction(evt) {
 log.info "Smart Home Monitor: $evt.displayName - $evt.value"
-state.shmstate = evt.value
+state.shmstate_raw = evt.value
+state.shmstate = state.shmstate_raw.toLowerCase()
 
   if(shmOff && !alarmOff) {
     log.debug("Smart Home Monitor: '$state.shmstate', SimpliSafe: '$state.alarmstate'")
@@ -94,7 +95,8 @@ state.shmstate = evt.value
 
 def alarmstate(evt) {
 log.info "SimpliSafe Alarm: $evt.displayName - $evt.value"
-state.alarmstate = evt.value
+state.alarmstate_raw = evt.value
+state.alarmstate = state.alarmstate_raw.toLowerCase()
 
   if (alarmOff && !shmOff) {
     log.debug("SimpliSafe: '$state.alarmstate', Smart Home Monitor: '$state.shmstate'")
@@ -116,12 +118,12 @@ state.alarmstate = evt.value
  }
 }
   
-  if (evt.value in alarmon) {
+  if (state.alarmstate in alarmon) {
     log.debug("SimpliSafe state: $state.alarmstate")
      alarmstateon()
   }
  else {
-  if (evt.value in alarmoff) {
+  if (state.alarmstate in alarmoff) {
     log.debug("SimpliSafe state: $state.alarmstate")
      alarmstateoff()
   }
@@ -240,7 +242,7 @@ def alarmstateoff() {
 // TODO - centralize somehow
 private getalarmOff() {
 	def result = false
-	if (state.alarmstate == "OFF" | state.alarmstate == "off") {
+	if (state.alarmstate == "off") {
 	result = true }
 	log.trace "alarmOff = $result"
 	result
@@ -248,7 +250,7 @@ private getalarmOff() {
 
 private getalarmAway() {
 	def result = false
-	if (state.alarmstate == "AWAY" | state.alarmstate == "away") {
+	if (state.alarmstate == "away") {
 	result = true }
 	log.trace "alarmAway = $result"
 	result
@@ -256,7 +258,7 @@ private getalarmAway() {
 
 private getalarmHome() {
 	def result = false
-	if (state.alarmstate == "HOME" | state.alarmstate == "home") {
+	if (state.alarmstate == "home") {
 	result = true }
 	log.trace "alarmHome = $result"
 	result
