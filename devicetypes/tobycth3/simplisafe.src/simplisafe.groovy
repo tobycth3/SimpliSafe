@@ -3,7 +3,7 @@
  *
  *  Copyright 2015 Felix Gorodishter
  *  Modifications by Scott Silence
- *	Modifications by Toby Harris - 2/6/2018
+ *	Modifications by Toby Harris - 2/7/2018
  *
  *  Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  *  in compliance with the License. You may obtain a copy of the License at:
@@ -47,6 +47,7 @@ tiles(scale: 2) {
 			attributeState "pending off", label:'${name}', icon: "st.security.alarm.off", backgroundColor: "#ffffff"
 			attributeState "pending away", label:'${name}', icon: "st.Home.home4", backgroundColor: "#ffffff"
 			attributeState "pending home", label:'${name}', icon: "st.security.alarm.on", backgroundColor: "#ffffff"
+			attributeState "away_count", label:'countdown', icon: "st.security.alarm.on", backgroundColor: "#ffffff"
 			attributeState "failed set", label:'error', icon: "st.secondary.refresh", backgroundColor: "#d44556"
         }
 		
@@ -67,6 +68,7 @@ tiles(scale: 2) {
 		state ("away", label:"away", action:"away", icon: "st.security.alarm.on", backgroundColor: "#008CC1", nextState: "pending")
         state ("home", label:"away", action:"away", icon: "st.security.alarm.on", backgroundColor: "#505050", nextState: "pending")
 		state ("pending", label:"pending", icon: "st.security.alarm.on", backgroundColor: "#ffffff")
+		state ("away_count", label:"pending", icon: "st.security.alarm.on", backgroundColor: "#ffffff")
 	}
 	
     standardTile("home", "device.alarm", width: 2, height: 2, canChangeIcon: false, inactiveLabel: true, canChangeBackground: false) {
@@ -189,8 +191,8 @@ def poll() {
     }
 	
 	httpGet ([uri: getAPIUrl("events"), headers: state.auth.respAuthHeader, contentType: "application/json; charset=utf-8"]) { response ->
-        sendEvent(name: "events", value: response.data.events.info)
-        log.info "Events: $response.data.events.info"
+		sendEvent(name: "events", value: response.data.events[0].info)
+		log.info "Events: ${response.data.events[0].info}"
     }
 	
 	def alarm_state = device.currentValue("alarm")
