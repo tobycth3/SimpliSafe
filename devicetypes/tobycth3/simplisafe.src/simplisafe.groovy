@@ -3,7 +3,7 @@
  *
  *  Copyright 2015 Felix Gorodishter
  *  Modifications by Scott Silence
- *	Modifications by Toby Harris - 2/7/2018
+ *	Modifications by Toby Harris - 2/8/2018
  *
  *  Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  *  in compliance with the License. You may obtain a copy of the License at:
@@ -36,6 +36,8 @@ metadata {
 		command "away"
 		command "off"
 		command "update_state"
+		attribute "events", "string"
+		attribute "messages", "string"
 	}
 
 tiles(scale: 2) {
@@ -87,12 +89,18 @@ tiles(scale: 2) {
 				]
 			)
 		}
+
+	standardTile("message", "device.message", width: 2, height: 2, canChangeIcon: false, inactiveLabel: true, canChangeBackground: false) {
+		state ("inactive", label:'OK', icon: "st.Kids.kids15", backgroundColor: "#50C65F")
+		state ("active", label:'ALERT',  icon: "st.Kids.kids15", backgroundColor: "#d44556")
+	}
+	
 	standardTile("refresh", "device.alarm", inactiveLabel: false, decoration: "flat", width: 2, height: 2) {
 		state "default", action:"update_state", icon:"st.secondary.refresh"
 	}
 
 		main(["alarm"])
-		details(["alarm","off", "away", "home", "temperature", "refresh"])
+		details(["alarm","off", "away", "home", "temperature", "message", "refresh"])
 	}
 }
 
@@ -184,20 +192,52 @@ def poll() {
     log.info "Executing polling..."
    
 	httpGet ([uri: getAPIUrl("refresh"), headers: state.auth.respAuthHeader, contentType: "application/json; charset=utf-8"]) { response ->
-        sendEvent(name: "alarm", value: response.data.subscription.location.system.alarmState)
+        
+		//Check alarm state
+		sendEvent(name: "alarm", value: response.data.subscription.location.system.alarmState)
+		log.info "Alarm State1: $response.data.subscription.location.system.alarmState"
+		
+		//Check temperature
 		sendEvent(name: "temperature", value: response.data.subscription.location.system.temperature)
-        log.info "Alarm State1: $response.data.subscription.location.system.alarmState"
 		log.info "Temperature: $response.data.subscription.location.system.temperature"
+		
+		//Check messages
+		if (response.data.subscription.location.system.messages[0] != null)
+		{
+		sendEvent(name: "messages", value: response.data.subscription.location.system.messages[0].text)
+		log.info "Messages: ${response.data.subscription.location.system.messages[0].text}"
+		}
+		else
+		{
+		sendEvent(name: "messages", value: "none")
+		log.info "Messages: ${response.data.subscription.location.system.messages}"
+		}
     }
 	
 	httpGet ([uri: getAPIUrl("events"), headers: state.auth.respAuthHeader, contentType: "application/json; charset=utf-8"]) { response ->
+		
+		//Check events
 		sendEvent(name: "events", value: response.data.events[0].info)
 		log.info "Events: ${response.data.events[0].info}"
     }
 	
+	
+	//Set presence
 	def alarm_state = device.currentValue("alarm")
 	def alarm_presence = ['OFF':'present', 'HOME':'present', 'AWAY':'not present']
 		sendEvent(name: 'presence', value: alarm_presence.getAt(alarm_state))
+	
+
+	//Set message alert
+	if (device.currentValue("messages") != "none")
+	{
+	sendEvent(name: "message", value: "active")
+	}
+	else
+	{
+	sendEvent(name: "message", value: "inactive")
+	}
+	
 	
     //log.info "Alarm State2: $response"
     //apiLogout()
