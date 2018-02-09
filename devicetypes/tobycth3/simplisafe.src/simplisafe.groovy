@@ -202,15 +202,15 @@ def poll() {
 		log.info "Temperature: $response.data.subscription.location.system.temperature"
 		
 		//Check messages
-		if (response.data.subscription.location.system.messages[0] != null)
+		if (settings.ssversion == "ss3" && response.data.subscription.location.system.messages[0] != null) 
 		{
-		sendEvent(name: "messages", value: response.data.subscription.location.system.messages[0].text)
-		log.info "Messages: ${response.data.subscription.location.system.messages[0].text}"
+			sendEvent(name: "messages", value: response.data.subscription.location.system.messages[0].text)
+			log.info "Messages: ${response.data.subscription.location.system.messages[0].text}"
 		}
-		else
+		else 
 		{
-		sendEvent(name: "messages", value: "none")
-		log.info "Messages: ${response.data.subscription.location.system.messages}"
+			sendEvent(name: "messages", value: "none")
+			log.info "Messages: No Message Found"
 		}
     }
 	
@@ -232,17 +232,18 @@ def poll() {
 	//Set presence
 	def alarm_state = device.currentValue("alarm")
 	def alarm_presence = ['OFF':'present', 'HOME':'present', 'AWAY':'not present']
-		sendEvent(name: 'presence', value: alarm_presence.getAt(alarm_state))
+	sendEvent(name: 'presence', value: alarm_presence.getAt(alarm_state))
 	
 
 	//Set message alert
-	if (device.currentValue("messages") != "none")
+	log.info "Messages: ${device.currentValue("messages")}"
+	if (device.currentValue("messages") && device.currentValue("messages") != "none")
 	{
-	sendEvent(name: "message", value: "active")
+		sendEvent(name: "message", value: "active")
 	}
 	else
 	{
-	sendEvent(name: "message", value: "inactive")
+		sendEvent(name: "message", value: "inactive")
 	}
 	
 	
