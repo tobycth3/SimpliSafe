@@ -3,7 +3,7 @@
  *
  *  Copyright 2015 Felix Gorodishter
  *  Modifications by Scott Silence
- *	Modifications by Toby Harris - 2/8/2018
+ *	Modifications by Toby Harris - 2/9/2018
  *
  *  Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  *  in compliance with the License. You may obtain a copy of the License at:
@@ -26,23 +26,24 @@ metadata {
 	definition (name: "SimpliSafe", namespace: "tobycth3", author: "Toby Harris") {
 		capability "Alarm"
 		capability "Polling"
-        capability "Contact Sensor"
+       // capability "Contact Sensor"
 		capability "Carbon Monoxide Detector"
 		capability "Presence Sensor"
 		capability "Smoke Detector"
         capability "Temperature Measurement"
         capability "Water Sensor"
+		command "off"
 		command "home"
 		command "away"
-		command "off"
 		command "update_state"
 		attribute "events", "string"
 		attribute "messages", "string"
+		attribute "status", "string"
 	}
 
 tiles(scale: 2) {
-    multiAttributeTile(name:"alarm", type: "generic", width: 6, height: 4){
-        tileAttribute ("device.alarm", key: "PRIMARY_CONTROL") {
+    multiAttributeTile(name:"status", type: "generic", width: 6, height: 4){
+        tileAttribute ("device.status", key: "PRIMARY_CONTROL") {
             attributeState "off", label:'${name}', icon: "st.security.alarm.off", backgroundColor: "#505050"
             attributeState "home", label:'${name}', icon: "st.Home.home4", backgroundColor: "#00BEAC"
             attributeState "away", label:'${name}', icon: "st.security.alarm.on", backgroundColor: "#008CC1"
@@ -51,6 +52,12 @@ tiles(scale: 2) {
 			attributeState "pending home", label:'${name}', icon: "st.security.alarm.on", backgroundColor: "#ffffff"
 			attributeState "away_count", label:'countdown', icon: "st.security.alarm.on", backgroundColor: "#ffffff"
 			attributeState "failed set", label:'error', icon: "st.secondary.refresh", backgroundColor: "#d44556"
+			attributeState "alert", label:'${name}', icon: "st.alarm.beep.beep", backgroundColor: "#ffa81e"
+			attributeState "alarm", label:'${name}', icon: "st.security.alarm.alarm", backgroundColor: "#d44556"
+			attributeState "carbonMonoxide", label:'${name}', icon: "st.alarm.carbon-monoxide.carbon-monoxide", backgroundColor: "#d44556"
+			attributeState "smoke", label:'${name}', icon: "st.alarm.smoke.smoke", backgroundColor: "#d44556"
+			attributeState "temperature", label:'${name}', icon: "st.alarm.temperature.freeze", backgroundColor: "#d44556"
+			attributeState "water", label:'${name}', icon: "st.alarm.water.wet", backgroundColor: "#d44556"
         }
 		
 		tileAttribute("device.events", key: "SECONDARY_CONTROL", wordWrap: true) {
@@ -92,15 +99,16 @@ tiles(scale: 2) {
 
 	standardTile("message", "device.message", width: 2, height: 2, canChangeIcon: false, inactiveLabel: true, canChangeBackground: false) {
 		state ("inactive", label:'OK', icon: "st.Kids.kids15", backgroundColor: "#50C65F")
-		state ("active", label:'ALERT',  icon: "st.Kids.kids15", backgroundColor: "#d44556")
+		state ("alert", label:'${name}',  icon: "st.Kids.kids15", backgroundColor: "#ffa81e")
+		state ("alarm", label:'${name}',  icon: "st.Kids.kids15", backgroundColor: "#d44556")
 	}
 	
 	standardTile("refresh", "device.alarm", inactiveLabel: false, decoration: "flat", width: 2, height: 2) {
 		state "default", action:"update_state", icon:"st.secondary.refresh"
 	}
 
-		main(["alarm"])
-		details(["alarm","off", "away", "home", "temperature", "message", "refresh"])
+		main(["status"])
+		details(["status","off", "away", "home", "temperature", "message", "refresh"])
 	}
 }
 
@@ -195,31 +203,90 @@ def poll() {
         
 		//Check alarm state
 		sendEvent(name: "alarm", value: response.data.subscription.location.system.alarmState)
+		sendEvent(name: "status", value: response.data.subscription.location.system.alarmState)
 		log.info "Alarm State1: $response.data.subscription.location.system.alarmState"
 		
 		//Check temperature
+		if (response.data.subscription.location.system.temperature != null) {
 		sendEvent(name: "temperature", value: response.data.subscription.location.system.temperature)
 		log.info "Temperature: $response.data.subscription.location.system.temperature"
+		}
 		
 		//Check messages
-		if (response.data.subscription.location.system.messages[0] != null)
-		{
-		sendEvent(name: "messages", value: response.data.subscription.location.system.messages[0].text)
-		log.info "Messages: ${response.data.subscription.location.system.messages[0].text}"
-		}
-		else
-		{
-		sendEvent(name: "messages", value: "none")
-		log.info "Messages: ${response.data.subscription.location.system.messages}"
-		}
+       	if (settings.ssversion == "ss3") {
+            if (response.data.subscription.location.system.messages[0] != null)
+            {
+				sendEvent(name: "message", value: "alert")
+				sendEvent(name: "status", value: "alert")
+                sendEvent(name: "messages", value: response.data.subscription.location.system.messages[0].text)
+                log.info "Messages: ${response.data.subscription.location.system.messages[0].text}"
+				
+				//Check for alerts
+				if (response.data.subscription.location.system.messages[0].category == "alarm")
+				{
+				sendEvent(name: "message", value: "alarm")
+				log.info "Message category: ${response.data.subscription.location.system.messages[0].category}"
+				
+					//Carbon Monoxide sensor alerts
+					if (response.data.subscription.location.system.messages[0].data.sensorType == "Carbon Monoxide Sensor")
+					{
+					sendEvent(name: "carbonMonoxide", value: "detected")
+					sendEvent(name: "status", value: "carbonMonoxide")
+					log.info "Message sensor: ${response.data.subscription.location.system.messages[0].data.sensorType}"
+					}
+					
+					//Smoke sensor alerts
+					if (response.data.subscription.location.system.messages[0].data.sensorType == "Smoke Sensor")
+					{
+					sendEvent(name: "smoke", value: "detected")
+					sendEvent(name: "status", value: "smoke")
+					log.info "Message sensor: ${response.data.subscription.location.system.messages[0].data.sensorType}"
+					}
+					
+				
+					//Temperature sensor alerts
+					//if (response.data.subscription.location.system.messages[0].data.sensorType == "Temperature Sensor")
+					//{
+					//sendEvent(name: "temperature", value: "??")
+					//sendEvent(name: "status", value: "temperature")
+					//log.info "Message sensor: ${response.data.subscription.location.system.messages[0].data.sensorType}"
+					//}
+
+					//Water sensor alerts
+					if (response.data.subscription.location.system.messages[0].data.sensorType == "Water Sensor")
+					{
+					sendEvent(name: "water", value: "wet")
+					sendEvent(name: "status", value: "water")
+					log.info "Message sensor: ${response.data.subscription.location.system.messages[0].data.sensorType}"
+					}
+				}	
+            }
+            else
+            {
+                sendEvent(name: "message", value: "inactive")
+				sendEvent(name: "messages", value: "none")
+				sendEvent(name: "carbonMonoxide", value: "clear")
+				sendEvent(name: "smoke", value: "clear")
+				//sendEvent(name: "temperature", value: "??")
+				sendEvent(name: "water", value: "dry")
+                log.info "Messages: ${response.data.subscription.location.system.messages}"
+            }
+      	}
     }
 	
-	httpGet ([uri: getAPIUrl("events"), headers: state.auth.respAuthHeader, contentType: "application/json; charset=utf-8"]) { response ->
-		
-		//Check events
-		sendEvent(name: "events", value: response.data.events[0].info)
-		log.info "Events: ${response.data.events[0].info}"
+//Get the most recent event
+httpGet ([uri: getAPIUrl("events"), headers: state.auth.respAuthHeader, contentType: "application/json; charset=utf-8"]) { response ->
+	if (response.status == 200 && response.data.events[0] != null) {
+    	//Let's get the time for the event
+    	def epochTime = Long.valueOf(response.data.events[0].eventTimestamp.toInteger()) * 1000
+		def timeString = new Date(epochTime + location.timeZone.rawOffset ).format("h:mm a")
+    	
+        //Check events and format message
+        def eventMsg = "${response.data.events[0].info} @ ${timeString}"
+		sendEvent(name: "events", value: eventMsg)
+		log.info "Events: $eventMsg"
     }
+}
 	
 	
 	//Set presence
@@ -228,17 +295,6 @@ def poll() {
 		sendEvent(name: 'presence', value: alarm_presence.getAt(alarm_state))
 	
 
-	//Set message alert
-	if (device.currentValue("messages") != "none")
-	{
-	sendEvent(name: "message", value: "active")
-	}
-	else
-	{
-	sendEvent(name: "message", value: "inactive")
-	}
-	
-	
     //log.info "Alarm State2: $response"
     //apiLogout()
 }
