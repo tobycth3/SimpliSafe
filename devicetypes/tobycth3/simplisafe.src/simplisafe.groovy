@@ -214,12 +214,19 @@ def poll() {
 		}
     }
 	
+	//Get the most recent event
 	httpGet ([uri: getAPIUrl("events"), headers: state.auth.respAuthHeader, contentType: "application/json; charset=utf-8"]) { response ->
-		
-		//Check events
-		sendEvent(name: "events", value: response.data.events[0].info)
-		log.info "Events: ${response.data.events[0].info}"
-    }
+		if (response.status == 200 && response.data.events[0] != null) {
+			//Let's get the time for the event
+			def epochTime = Long.valueOf(response.data.events[0].eventTimestamp.toInteger()) * 1000
+			def timeString = new Date(epochTime + location.timeZone.rawOffset ).format("h:mm a")
+
+			//Check events and format message
+			def eventMsg = "${response.data.events[0].info} @ ${timeString}"
+			sendEvent(name: "events", value: eventMsg)
+			log.info "Events: $eventMsg"
+		}
+	}
 	
 	
 	//Set presence
