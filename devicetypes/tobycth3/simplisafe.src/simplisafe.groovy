@@ -213,6 +213,33 @@ def poll() {
 		}
 		
 		//Check messages
+<<<<<<< .merge_file_a22648
+		if (settings.ssversion == "ss3" && response.data.subscription.location.system.messages[0] != null) 
+		{
+			sendEvent(name: "messages", value: response.data.subscription.location.system.messages[0].text)
+			log.info "Messages: ${response.data.subscription.location.system.messages[0].text}"
+		}
+		else 
+		{
+			sendEvent(name: "messages", value: "none")
+			log.info "Messages: No Message Found"
+		}
+    }
+	
+	//Get the most recent event
+	httpGet ([uri: getAPIUrl("events"), headers: state.auth.respAuthHeader, contentType: "application/json; charset=utf-8"]) { response ->
+		if (response.status == 200 && response.data.events[0] != null) {
+			//Let's get the time for the event
+			def epochTime = Long.valueOf(response.data.events[0].eventTimestamp.toInteger()) * 1000
+			def timeString = new Date(epochTime + location.timeZone.rawOffset ).format("h:mm a")
+
+			//Check events and format message
+			def eventMsg = "${response.data.events[0].info} @ ${timeString}"
+			sendEvent(name: "events", value: eventMsg)
+			log.info "Events: $eventMsg"
+		}
+	}
+=======
        	if (settings.ssversion == "ss3") {
             if (response.data.subscription.location.system.messages[0] != null)
             {
@@ -287,14 +314,30 @@ httpGet ([uri: getAPIUrl("events"), headers: state.auth.respAuthHeader, contentT
 		log.info "Events: $eventMsg"
     }
 }
+>>>>>>> .merge_file_a19196
 	
 	
 	//Set presence
 	def alarm_state = device.currentValue("alarm")
 	def alarm_presence = ['OFF':'present', 'HOME':'present', 'AWAY':'not present']
-		sendEvent(name: 'presence', value: alarm_presence.getAt(alarm_state))
+	sendEvent(name: 'presence', value: alarm_presence.getAt(alarm_state))
 	
 
+<<<<<<< .merge_file_a22648
+	//Set message alert
+	log.info "Messages: ${device.currentValue("messages")}"
+	if (device.currentValue("messages") && device.currentValue("messages") != "none")
+	{
+		sendEvent(name: "message", value: "active")
+	}
+	else
+	{
+		sendEvent(name: "message", value: "inactive")
+	}
+	
+	
+=======
+>>>>>>> .merge_file_a19196
     //log.info "Alarm State2: $response"
     //apiLogout()
 }
