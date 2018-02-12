@@ -25,7 +25,8 @@ preferences {
   }
   
   section("Control these switchs") {
-	input "alarmtile", "capability.switch", title: "Select switches", multiple: true, required: false  } 
+	input "alarmtile", "capability.switch", title: "Select switches", multiple: true, required: false  
+  } 
   
   section("Turn on switchs when SimpliSafe state matches") {
     input "alarmon", "enum", title: "Select on state", multiple: true, required: false, metadata:[values:["off", "home", "away"]]
@@ -34,15 +35,15 @@ preferences {
   section("Turn off switchs when SimpliSafe state matches") {
     input "alarmoff", "enum", title: "Select off state", multiple: true, required: false, metadata:[values:["off", "home", "away"]]
   }
-   
-	section("Notifications"){
-		input("recipients", "contact", title: "Send notifications to", required: false) {
-			input "phone", "phone", title: "Phone Number (for SMS, optional)", required: false
-			paragraph "If outside the US please make sure to enter the proper country code"
-			input "pushAndPhone", "enum", title: "Both Push and SMS?", required: false, options: ["Yes", "No"]
-		}
-	}
+  
+  section("Notifications"){
+    input("recipients", "contact", title: "Send notifications to", required: false) {
+    input "sendPushMessage", "enum", title: "Send a push notification?", options: ["Yes", "No"], required: false
+    input "phone", "phone", title: "Phone Number (for SMS, optional)", required: false
+    paragraph "If outside the US please make sure to enter the proper country code"
   }
+  }
+}
 
 def installed() {
   init()
@@ -290,19 +291,26 @@ private getshmStay() {
   
 private sendMessage(msg) {
 	Map options = [:]
-	if (location.contactBookEnabled) {
+    
+	if (location.contactBookEnabled && recipients) {
 		sendNotificationToContacts(msg, recipients, options)
 	} else {
-		if (!phone || pushAndPhone != 'No') {
-			log.debug 'sending push'
+    	if (phone) {
+        	options.phone = phone
+			if (sendPushMessage && sendPushMessage != 'No') {
+				log.debug 'Sending push and SMS'
+				options.method = 'both'
+			} else {
+				log.debug 'Sending SMS'
+				options.method = 'phone'
+			}
+        } else if (sendPushMessage && sendPushMessage != 'No') {
+			log.debug 'Sending push'
 			options.method = 'push'
-			//sendPush(msg)
+		} else {
+			log.debug 'Sending nothing'
+			options.method = 'none'
 		}
-		if (phone) {
-			options.phone = phone
-			log.debug 'sending SMS'
-			//sendSms(phone, msg)
-		}
-		sendNotification(msg, options)
+		sendNotification(msg, options)        
 	}
 }
