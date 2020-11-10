@@ -3,7 +3,7 @@
  *
  *  Copyright 2015 Felix Gorodishter
  *  Modifications by Scott Silence
- *	Modifications by Toby Harris - 2/10/2018
+ *	Modifications by Toby Harris - 3/1/2019
  *
  *  Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  *  in compliance with the License. You may obtain a copy of the License at:
@@ -25,18 +25,20 @@ preferences {
 metadata {	
 	definition (name: "SimpliSafe", namespace: "tobycth3", author: "Toby Harris") {
 		capability "Alarm"
+        capability "Acceleration Sensor"
 		capability "Polling"
-       // capability "Contact Sensor"
+        capability "Contact Sensor"
 		capability "Carbon Monoxide Detector"
 		capability "Presence Sensor"
 		capability "Smoke Detector"
         capability "Temperature Measurement"
         capability "Water Sensor"
-		command "off"
+        capability "Sensor"
+		//command "off"
 		command "home"
 		command "away"
 		command "update_state"
-		attribute "events", "string"
+		//attribute "events", "string"
 		attribute "messages", "string"
 		attribute "status", "string"
 	}
@@ -65,19 +67,18 @@ tiles(scale: 2) {
 		}
     }	
 	
+//    standardTile("off", "device.alarm", width: 2, height: 2, canChangeIcon: false, inactiveLabel: true, canChangeBackground: false) {
+//        state ("off", label:"off", action:"off", icon: "st.security.alarm.off", backgroundColor: "#008CC1", nextState: "pending")
+//        state ("away", label:"off", action:"off", icon: "st.security.alarm.off", backgroundColor: "#505050", nextState: "pending")
+//        state ("home", label:"off", action:"off", icon: "st.security.alarm.off", backgroundColor: "#505050", nextState: "pending")
+//        state ("pending", label:"pending", icon: "st.security.alarm.off", backgroundColor: "#ffffff")
+//	}
+    
     standardTile("off", "device.alarm", width: 2, height: 2, canChangeIcon: false, inactiveLabel: true, canChangeBackground: false) {
-        state ("off", label:"off", action:"off", icon: "st.security.alarm.off", backgroundColor: "#008CC1", nextState: "pending")
-        state ("away", label:"off", action:"off", icon: "st.security.alarm.off", backgroundColor: "#505050", nextState: "pending")
-        state ("home", label:"off", action:"off", icon: "st.security.alarm.off", backgroundColor: "#505050", nextState: "pending")
+        state ("off", label:"off", action:"", icon: "st.security.alarm.off", backgroundColor: "#008CC1", nextState: "")
+        state ("away", label:"off", action:"", icon: "st.security.alarm.off", backgroundColor: "#505050", nextState: "")
+        state ("home", label:"off", action:"", icon: "st.security.alarm.off", backgroundColor: "#505050", nextState: "")
         state ("pending", label:"pending", icon: "st.security.alarm.off", backgroundColor: "#ffffff")
-	}
-	
-    standardTile("away", "device.alarm", width: 2, height: 2, canChangeIcon: false, inactiveLabel: true, canChangeBackground: false) {
-        state ("off", label:"away", action:"away", icon: "st.security.alarm.on", backgroundColor: "#505050", nextState: "pending") 
-		state ("away", label:"away", action:"away", icon: "st.security.alarm.on", backgroundColor: "#008CC1", nextState: "pending")
-        state ("home", label:"away", action:"away", icon: "st.security.alarm.on", backgroundColor: "#505050", nextState: "pending")
-		state ("pending", label:"pending", icon: "st.security.alarm.on", backgroundColor: "#ffffff")
-		state ("away_count", label:"pending", icon: "st.security.alarm.on", backgroundColor: "#ffffff")
 	}
 	
     standardTile("home", "device.alarm", width: 2, height: 2, canChangeIcon: false, inactiveLabel: true, canChangeBackground: false) {
@@ -86,12 +87,21 @@ tiles(scale: 2) {
 		state ("home", label:"home", action:"home", icon: "st.Home.home4", backgroundColor: "#008CC1", nextState: "pending")
 		state ("pending", label:"pending", icon: "st.Home.home4", backgroundColor: "#ffffff")
 	}
+    
+    standardTile("away", "device.alarm", width: 2, height: 2, canChangeIcon: false, inactiveLabel: true, canChangeBackground: false) {
+        state ("off", label:"away", action:"away", icon: "st.security.alarm.on", backgroundColor: "#505050", nextState: "pending") 
+		state ("away", label:"away", action:"away", icon: "st.security.alarm.on", backgroundColor: "#008CC1", nextState: "pending")
+        state ("home", label:"away", action:"away", icon: "st.security.alarm.on", backgroundColor: "#505050", nextState: "pending")
+		state ("pending", label:"pending", icon: "st.security.alarm.on", backgroundColor: "#ffffff")
+		state ("away_count", label:"pending", icon: "st.security.alarm.on", backgroundColor: "#ffffff")
+	}
+
 		valueTile("events", "device.events", width: 6, height: 2, canChangeIcon: false, inactiveLabel: true, canChangeBackground: false, decoration: "flat", wordWrap: true) {
 			state ("default", label:'${currentValue}')
 		}
 
 		main(["status"])
-		details(["status","off", "away", "home", "events"])
+		details(["status","off", "home", "away", "events"])
 	}
 }
 
@@ -105,15 +115,16 @@ def updated() {
 }
   
 def init() {
+	state.clear()
 	log.info "Setting up Schedule (every 5 minutes)..."
-runEvery5Minutes(poll)
+	runEvery5Minutes(poll)
 }
 
 // handle commands
-def off() {
-	log.info "Setting SimpliSafe mode to 'Off'"
-	setState ('off')
-}
+// def off() {
+//	log.info "Setting SimpliSafe mode to 'Off'"
+//	setState ('off')
+// }
 
 def home() { 
 	log.info "Setting SimpliSafe mode to 'Home'"
@@ -187,12 +198,12 @@ def poll() {
 		//Check alarm state
 		sendEvent(name: "alarm", value: response.data.subscription.location.system.alarmState)
 		sendEvent(name: "status", value: response.data.subscription.location.system.alarmState)
-		log.info "Alarm State1: $response.data.subscription.location.system.alarmState"
+		// log.info "Alarm State1: $response.data.subscription.location.system.alarmState"
 		
 		//Check temperature
 		if (response.data.subscription.location.system.temperature != null) {
 		sendEvent(name: "temperature", value: response.data.subscription.location.system.temperature, unit: "dF")
-		log.info "Temperature: $response.data.subscription.location.system.temperature"
+		// log.info "Temperature: $response.data.subscription.location.system.temperature"
 		}
 		
 		//Check messages
@@ -201,13 +212,14 @@ def poll() {
             {
 				sendEvent(name: "status", value: "alert")
                 sendEvent(name: "messages", value: response.data.subscription.location.system.messages[0].text)
-                log.info "Messages: ${response.data.subscription.location.system.messages[0].text}"
+                // log.info "Messages: ${response.data.subscription.location.system.messages[0].text}"
 				
 				//Check for alerts
 				if (response.data.subscription.location.system.messages[0].category == "alarm")
 				{
+				sendEvent(name: "contact", value: "open")
 				sendEvent(name: "status", value: "alarm")
-				log.info "Message category: ${response.data.subscription.location.system.messages[0].category}"
+				// log.info "Message category: ${response.data.subscription.location.system.messages[0].category}"
 				
 					//Carbon Monoxide sensor alerts
 					if (response.data.subscription.location.system.messages[0].data.sensorType == "C0 Detector")
@@ -231,7 +243,7 @@ def poll() {
 					//{
 					//sendEvent(name: "temperature", value: "??")
 					//sendEvent(name: "status", value: "temperature")
-					//log.info "Message sensor: ${response.data.subscription.location.system.messages[0].data.sensorType}"
+					// log.info "Message sensor: ${response.data.subscription.location.system.messages[0].data.sensorType}"
 					//}
 
 					//Water sensor alerts
@@ -245,53 +257,107 @@ def poll() {
             }
             else
             {
+				sendEvent(name: "contact", value: "closed")
 				sendEvent(name: "messages", value: "none")
 				sendEvent(name: "carbonMonoxide", value: "clear")
 				sendEvent(name: "smoke", value: "clear")
 				//sendEvent(name: "temperature", value: "??")
 				sendEvent(name: "water", value: "dry")
-                log.info "Messages: ${response.data.subscription.location.system.messages}"
+                // log.info "Messages: ${response.data.subscription.location.system.messages}"
             }
       	}
     }
 	
 		//Check events
-		httpGet ([uri: getAPIUrl("events"), headers: state.auth.respAuthHeader, contentType: "application/json; charset=utf-8"]) { response ->
-		if (response.data.events[0] != null) {
-			sendEvent(name: "events", value: response.data.events[0].messageBody)
-			log.info "Events: ${response.data.events[0].messageBody}"
-    }
-}	
+		//httpGet ([uri: getAPIUrl("events"), headers: state.auth.respAuthHeader, contentType: "application/json; charset=utf-8"]) { response ->
+		//if (response.data.events[0] != null) {
+			//sendEvent(name: "events", value: response.data.events[0].messageBody)
+			// log.info "Events: ${response.data.events[0].messageBody}"
+    //}
+//}	
 	
 	//Set presence
 	def alarm_state = device.currentValue("alarm")
 	def alarm_presence = ['OFF':'present', 'HOME':'present', 'AWAY':'not present']
 		sendEvent(name: 'presence', value: alarm_presence.getAt(alarm_state))
 	
+	//Set virtual acceleration
+	def alarm_acceleration = ['OFF':'inactive', 'HOME':'active', 'AWAY':'active']
+		sendEvent(name: 'acceleration', value: alarm_acceleration.getAt(alarm_state))
+	
 
     //log.info "Alarm State2: $response"
     //apiLogout()
 }
 
+include 'asynchttp_v1'
+
 def apiLogin() {
-	//Login to the system
     log.info "Executing Login..."
-   
-   	//Define the login Auth Body and Header Information
-    def authBody = [ "grant_type":"password",
-    				"device_id":"WebApp",
-                    "username":settings.username,
-                    "password": settings.password ]                    
-    def authHeader = [ "Authorization":"Basic NGRmNTU2MjctNDZiMi00ZTJjLTg2NmItMTUyMWIzOTVkZWQyLjEtMC0wLldlYkFwcC5zaW1wbGlzYWZlLmNvbTo="	]
+     
+    def params = [
+        uri: 'https://api.simplisafe.com',
+        path: '/v1/api/token',
+        body: [ "grant_type": "password",
+                "username": settings.username,
+                "password": settings.password,
+                "client_id": device.id,
+                "device_id": "WebApp" ]
+    ]
+    asynchttp_v1.post(apiLoginHandler, params)
+}
+
+def apiLoginHandler(response, data) {
+    if (response.hasError()) {
+       // log.trace "response received error: ${response.getErrorMessage()}"
+       // log.trace "error response data: $response.errorJson"
+        state.errorData = response.errorJson
+    if (state.errorData.error == "mfa_required") {
+        // log.info state.errorData.mfa_token
+        state.mfa_token = state.errorData.mfa_token
+        mfaAuth()
+        }
+    } else {
+       initAuth() 
+    }
+}
+
+
+def mfaAuth() {
+    log.info "Executing MFA login..."
+    def params = [
+        uri: 'https://api.simplisafe.com',
+        path: '/v1/api/mfa/challenge',
+        body: [ "challenge_type": "oob",
+                "client_id": device.id,
+                "mfa_token": state.mfa_token ]
+    ]
+    asynchttp_v1.post(mfaAuthHandler, params)
+}
+
+def mfaAuthHandler(response, data) {
+    if (response.hasError()) {
+        log.trace "response received error: ${response.getErrorMessage()}"
+    }
+}
+
+
+def initAuth() {
+	//Login to the system
+    def authBody = [ "grant_type": "password",
+                "username": settings.username,
+                "password": settings.password,
+                "client_id": device.id,
+                "device_id": "WebApp" ]                 
     
     try {
-        httpPost([ uri: getAPIUrl("initAuth"), headers: authHeader, contentType: "application/json; charset=utf-8", body: authBody ]) { response ->
+        httpPost([ uri: getAPIUrl("initAuth"), contentType: "application/json; charset=utf-8", body: authBody ]) { response ->
         	state.auth = response.data
             state.auth.respAuthHeader = ["Authorization":state.auth.token_type + " " + state.auth.access_token]
             state.auth.tokenExpiry = now() + 3600000
         }
  	} catch (e) {
-    	//state.token = 
+    log.error "something went wrong: $e"
     }
     
     //Check for valid UID, and if not get it
@@ -313,7 +379,7 @@ def getUserId() {
     httpGet ([uri: getAPIUrl("authCheck"), headers: state.auth.respAuthHeader, contentType: "application/json; charset=utf-8"]) { response ->
         state.uid = response.data.userId
     }
-    log.info "User ID: $state.uid"
+    // log.info "User ID: $state.uid"
 }
 
 def getSubscriptionId() {
@@ -322,17 +388,17 @@ def getSubscriptionId() {
     	String tsid = response.data.subscriptions.location.sid
 		state.subscriptionId = tsid.substring(1, tsid.length() - 1)
     }
-    log.info "Subscription ID: $state.subscriptionId"
+    // log.info "Subscription ID: $state.subscriptionId"
 }
 
 def checkAuth()
 {
-	log.info "Checking to see if time has expired...."
+	// log.info "Checking to see if time has expired...."
         
     //If no State Auth, or now Token Expiry, or time has expired, need to relogin
     //log.info "Expiry time: $state.auth.tokenExpiry"
     if (!state.auth || !state.auth.tokenExpiry || now() > state.auth.tokenExpiry) {    
-    	log.info"Token Time has expired, excecuting re-login..."
+    	// log.info"Token Time has expired, excecuting re-login..."
         apiLogin()
     }
     
@@ -354,7 +420,7 @@ def apiLogout() {
     httpDelete([ uri: getAPIUrl("initAuth"), headers: state.auth.respAuthHeader, contentType: "application/json; charset=utf-8" ]) { response ->
         if (response.status == 200) {
             state.subscriptionId = null
-            log.info "Logged out from API."
+            // log.info "Logged out from API."
         }
     }
 }
