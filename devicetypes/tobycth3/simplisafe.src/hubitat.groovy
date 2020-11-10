@@ -116,8 +116,8 @@ def updated() {
   
 def init() {
 	state.clear()
-	log.info "Setting up Schedule (every 1 minute)..."
-	runEvery1Minute(poll)
+	log.info "Setting up Schedule (every 5 minutes)..."
+	runEvery5Minutes(poll)
 }
 
 // handle commands
@@ -296,6 +296,7 @@ def apiLogin() {
     def params = [
         uri: 'https://api.simplisafe.com',
         path: '/v1/api/token',
+        contentType: "application/json",
         body: [ "grant_type": "password",
                 "username": settings.username,
                 "password": settings.password,
@@ -308,8 +309,8 @@ def apiLogin() {
 def apiLoginHandler(response, data) {
     if (response.hasError()) {
        // log.trace "response received error: ${response.getErrorMessage()}"
-       // log.trace "error response data: $response.errorJson"
-        state.errorData = response.errorJson
+       // log.trace "error response data: ${response.getErrorData()}"
+        state.errorData = parseJson(response.errorData)
     if (state.errorData.error == "mfa_required") {
         // log.info state.errorData.mfa_token
         state.mfa_token = state.errorData.mfa_token
@@ -326,6 +327,7 @@ def mfaAuth() {
     def params = [
         uri: 'https://api.simplisafe.com',
         path: '/v1/api/mfa/challenge',
+        contentType: "application/json",
         body: [ "challenge_type": "oob",
                 "client_id": device.id,
                 "mfa_token": state.mfa_token ]
