@@ -34,7 +34,7 @@ metadata {
         capability "Temperature Measurement"
         capability "Water Sensor"
         capability "Sensor"
-		//command "off"
+		command "off"
 		command "home"
 		command "away"
 		command "update_state"
@@ -67,12 +67,12 @@ tiles(scale: 2) {
 		}
     }	
 	
-//    standardTile("off", "device.alarm", width: 2, height: 2, canChangeIcon: false, inactiveLabel: true, canChangeBackground: false) {
-//        state ("off", label:"off", action:"off", icon: "st.security.alarm.off", backgroundColor: "#008CC1", nextState: "pending")
-//        state ("away", label:"off", action:"off", icon: "st.security.alarm.off", backgroundColor: "#505050", nextState: "pending")
-//        state ("home", label:"off", action:"off", icon: "st.security.alarm.off", backgroundColor: "#505050", nextState: "pending")
-//        state ("pending", label:"pending", icon: "st.security.alarm.off", backgroundColor: "#ffffff")
-//	}
+    standardTile("off", "device.alarm", width: 2, height: 2, canChangeIcon: false, inactiveLabel: true, canChangeBackground: false) {
+        state ("off", label:"off", action:"off", icon: "st.security.alarm.off", backgroundColor: "#008CC1", nextState: "pending")
+        state ("away", label:"off", action:"off", icon: "st.security.alarm.off", backgroundColor: "#505050", nextState: "pending")
+        state ("home", label:"off", action:"off", icon: "st.security.alarm.off", backgroundColor: "#505050", nextState: "pending")
+        state ("pending", label:"pending", icon: "st.security.alarm.off", backgroundColor: "#ffffff")
+	}
     
     standardTile("off", "device.alarm", width: 2, height: 2, canChangeIcon: false, inactiveLabel: true, canChangeBackground: false) {
         state ("off", label:"off", action:"", icon: "st.security.alarm.off", backgroundColor: "#008CC1", nextState: "")
@@ -121,10 +121,10 @@ def init() {
 }
 
 // handle commands
-// def off() {
-//	log.info "Setting SimpliSafe mode to 'Off'"
-//	setState ('off')
-// }
+ def off() {
+	log.info "Setting SimpliSafe mode to 'Off'"
+	setState ('off')
+ }
 
 def home() { 
 	log.info "Setting SimpliSafe mode to 'Home'"
@@ -149,7 +149,7 @@ def setState (alState){
     if (alState == "off")
     {
     	try {
-        	httpPost([ uri: getAPIUrl("alarmOff"), headers: state.auth.respAuthHeader, contentType: "application/json; charset=utf-8" ])
+        	httpPost([ uri: getAPIUrl("alarmOff"), headers: state.auth.respAuthHeader, contentType: "application/json; charset=utf-8" ]){resp ->}
         } catch (e) {
         	timeout = true;
         	log.debug "Alarm SET to OFF Error: $e"
@@ -158,7 +158,7 @@ def setState (alState){
     else if (alState == "home")
     {
     	try {
-        	httpPost([ uri: getAPIUrl("alarmHome"), headers: state.auth.respAuthHeader, contentType: "application/json; charset=utf-8" ])
+        	httpPost([ uri: getAPIUrl("alarmHome"), headers: state.auth.respAuthHeader, contentType: "application/json; charset=utf-8" ]){resp ->}
         } catch (e) {
         	timeout = true;
         	log.debug "Alarm SET to HOME Error: $e"
@@ -167,7 +167,7 @@ def setState (alState){
     else if (alState == "away")
     {
     	try {
-        	httpPost([ uri: getAPIUrl("alarmAway"), headers: state.auth.respAuthHeader, contentType: "application/json; charset=utf-8" ])
+        	httpPost([ uri: getAPIUrl("alarmAway"), headers: state.auth.respAuthHeader, contentType: "application/json; charset=utf-8" ]){resp ->}
         } catch (e) {
         	timeout = true;
         	log.debug "Alarm SET to AWAY Error: $e"
