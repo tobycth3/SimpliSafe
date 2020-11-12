@@ -3,7 +3,7 @@
  *
  *  Copyright 2015 Felix Gorodishter
  *  Modifications by Scott Silence
- *	Modifications by Toby Harris - 11/10/2020
+ *	Modifications by Toby Harris - 11/12/2020
  *
  *  Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  *  in compliance with the License. You may obtain a copy of the License at:
@@ -149,7 +149,7 @@ def setState (alState){
     if (alState == "off")
     {
     	try {
-        	httpPost([ uri: getAPIUrl("alarmOff"), headers: state.auth.respAuthHeader, contentType: "application/json; charset=utf-8" ]){resp ->}
+        	httpPost([ uri: getAPIUrl("alarmOff"), headers: state.auth.respAuthHeader, contentType: "application/json; charset=utf-8" ])
         } catch (e) {
         	timeout = true;
         	log.debug "Alarm SET to OFF Error: $e"
@@ -158,7 +158,7 @@ def setState (alState){
     else if (alState == "home")
     {
     	try {
-        	httpPost([ uri: getAPIUrl("alarmHome"), headers: state.auth.respAuthHeader, contentType: "application/json; charset=utf-8" ]){resp ->}
+        	httpPost([ uri: getAPIUrl("alarmHome"), headers: state.auth.respAuthHeader, contentType: "application/json; charset=utf-8" ])
         } catch (e) {
         	timeout = true;
         	log.debug "Alarm SET to HOME Error: $e"
@@ -167,7 +167,7 @@ def setState (alState){
     else if (alState == "away")
     {
     	try {
-        	httpPost([ uri: getAPIUrl("alarmAway"), headers: state.auth.respAuthHeader, contentType: "application/json; charset=utf-8" ]){resp ->}
+        	httpPost([ uri: getAPIUrl("alarmAway"), headers: state.auth.respAuthHeader, contentType: "application/json; charset=utf-8" ])
         } catch (e) {
         	timeout = true;
         	log.debug "Alarm SET to AWAY Error: $e"
