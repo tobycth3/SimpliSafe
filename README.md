@@ -1,5 +1,5 @@
 # SimpliSafe
-SmartThings and SimpliSafe API integration
+SimpliSafe API integration for Hubitat and SmartThings
 
 NOTE: Due to the recent SimpliSafe Web APP / API change, a lot of functionality of this integration is broken. 
 Functionality is slowly being restored and code updates will be pushed here as they become available.
