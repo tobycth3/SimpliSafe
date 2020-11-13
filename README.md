@@ -2,11 +2,12 @@
 SimpliSafe API integration for Hubitat and SmartThings
 
 
-Please report any issues here: 
-# Hubitat:
+Please report any issues here:
+
+**Hubitat:**
 https://community.hubitat.com/t/release-simplisafe-alarm-integration/55571
 
-# SmartThings:
+**SmartThings:**
 https://community.smartthings.com/t/simplisafe-alarm-integration-cloud-to-cloud/
 
 
