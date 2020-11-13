@@ -3,7 +3,7 @@
  *
  *  Copyright 2015 Felix Gorodishter
  *  Modifications by Scott Silence
- *	Modifications by Toby Harris - 11/10/2020
+ *	Modifications by Toby Harris - 11/13/2020
  *
  *  Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  *  in compliance with the License. You may obtain a copy of the License at:
@@ -116,7 +116,7 @@ def updated() {
   
 def init() {
 	state.clear()
-	log.info "Setting up Schedule (every 5 minutes)..."
+	log.info "Setting up schedule (every 5 minutes)..."
 	runEvery5Minutes(poll)
 }
 
@@ -145,7 +145,8 @@ def setState (alState){
 	//Check Auth first
 	checkAuth()
     def timeout = false;
-    
+	
+	if (state.auth) {
     if (alState == "off")
     {
     	try {
@@ -185,14 +186,16 @@ def setState (alState){
     	//There was a timeout, so we can't poll right away. Wait 10 seconds and try polling.
     	runIn(10, poll)
     }
+  }
 }
 
 def poll() {
 	//Check Auth first
 	checkAuth()
-
+	
+	if (state.auth) {
     log.info "Executing polling..."
-   
+
 	httpGet ([uri: getAPIUrl("refresh"), headers: state.auth.respAuthHeader, contentType: "application/json; charset=utf-8"]) { response ->
         
 		//Check alarm state
@@ -205,6 +208,15 @@ def poll() {
 		sendEvent(name: "temperature", value: response.data.subscription.location.system.temperature, unit: "dF")
 		// log.info "Temperature: $response.data.subscription.location.system.temperature"
 		}
+		
+		//Set presence
+		def alarm_state = response.data.subscription.location.system.alarmState
+		def alarm_presence = ['OFF':'present', 'HOME':'present', 'AWAY':'not present']
+		sendEvent(name: 'presence', value: alarm_presence.getAt(alarm_state))
+	
+		//Set virtual acceleration
+		def alarm_acceleration = ['OFF':'inactive', 'HOME':'active', 'AWAY':'active']
+		sendEvent(name: 'acceleration', value: alarm_acceleration.getAt(alarm_state))
 		
 		//Check messages
        	if (settings.ssversion == "ss3") {
@@ -276,22 +288,13 @@ def poll() {
     //}
 //}	
 	
-	//Set presence
-	def alarm_state = device.currentValue("alarm")
-	def alarm_presence = ['OFF':'present', 'HOME':'present', 'AWAY':'not present']
-		sendEvent(name: 'presence', value: alarm_presence.getAt(alarm_state))
-	
-	//Set virtual acceleration
-	def alarm_acceleration = ['OFF':'inactive', 'HOME':'active', 'AWAY':'active']
-		sendEvent(name: 'acceleration', value: alarm_acceleration.getAt(alarm_state))
-	
-
     //log.info "Alarm State2: $response"
     //apiLogout()
+ }
 }
 
 def apiLogin() {
-    log.info "Executing Login..."
+    log.info "Executing login..."
      
     def params = [
         uri: 'https://api.simplisafe.com',
@@ -317,13 +320,15 @@ def apiLoginHandler(response, data) {
         mfaAuth()
         }
     } else {
-       initAuth() 
+		state.errorData = null
+		initAuth() 
     }
 }
 
 
 def mfaAuth() {
     log.info "Executing MFA login..."
+	if (!state.mfa) {
     def params = [
         uri: 'https://api.simplisafe.com',
         path: '/v1/api/mfa/challenge',
@@ -333,17 +338,24 @@ def mfaAuth() {
                 "mfa_token": state.mfa_token ]
     ]
     asynchttpPost(mfaAuthHandler, params)
+	    } else {
+	    log.warn "MFA pending, check email"
+    }
 }
 
 def mfaAuthHandler(response, data) {
     if (response.hasError()) {
         log.trace "response received error: ${response.getErrorMessage()}"
+    } else {
+	    log.warn "MFA sent, check email"
+		state.mfa = "sent"
     }
 }
 
 
 def initAuth() {
 	//Login to the system
+	if (!state.errorData) {
     def authBody = [ "grant_type": "password",
                 "username": settings.username,
                 "password": settings.password,
@@ -357,7 +369,7 @@ def initAuth() {
             state.auth.tokenExpiry = now() + 3600000
         }
  	} catch (e) {
-    log.error "something went wrong: $e"
+    log.error "initAuth something went wrong: $e"
     }
     
     //Check for valid UID, and if not get it
@@ -372,7 +384,8 @@ def initAuth() {
     {
     	getSubscriptionId()
     }
-}
+   }
+ }
 
 def getUserId() {
 	//check auth and get uid    
@@ -393,14 +406,13 @@ def getSubscriptionId() {
 
 def checkAuth()
 {
-	// log.info "Checking to see if time has expired...."
+	// log.info "Checking to see if token has expired...."
         
-    //If no State Auth, or now Token Expiry, or time has expired, need to relogin
     //log.info "Expiry time: $state.auth.tokenExpiry"
     if (!state.auth || !state.auth.tokenExpiry || now() > state.auth.tokenExpiry) {    
-    	// log.info"Token Time has expired, excecuting re-login..."
+		log.info "Token has expired, excecuting re-login..."
         apiLogin()
-    }
+    } else {
     
 	//Check Auth
     try {
@@ -408,13 +420,12 @@ def checkAuth()
             return response.status        
         }
     } catch (e) {
-        state.clear()
-        apiLogin()
-        httpGet ([uri: getAPIUrl("authCheck"), headers: state.auth.respAuthHeader, contentType: "application/json; charset=utf-8"]) { response ->
-            return response.status        
+    log.error "checkAuth something went wrong: $e"
+	state.auth = null
     }
-}
-}
+  }
+ }
+
 
 def apiLogout() {
     httpDelete([ uri: getAPIUrl("initAuth"), headers: state.auth.respAuthHeader, contentType: "application/json; charset=utf-8" ]) { response ->
