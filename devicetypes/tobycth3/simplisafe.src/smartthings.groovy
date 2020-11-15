@@ -3,7 +3,7 @@
  *
  *  Copyright 2015 Felix Gorodishter
  *  Modifications by Scott Silence
- *	Modifications by Toby Harris - 11/13/2020
+ *	Modifications by Toby Harris - 11/15/2020
  *
  *  Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  *  in compliance with the License. You may obtain a copy of the License at:
@@ -37,7 +37,6 @@ metadata {
 		command "off"
 		command "home"
 		command "away"
-		command "update_state"
 		//attribute "events", "string"
 		attribute "messages", "string"
 		attribute "status", "string"
@@ -136,11 +135,6 @@ def away() {
 	setState ('away')
 }
 
-def update_state() {
-	log.info "Refreshing SimpliSafe state..."
-	poll()
-}
-
 def setState (alState){
 	//Check Auth first
 	checkAuth()
@@ -199,8 +193,8 @@ def poll() {
 	httpGet ([uri: getAPIUrl("refresh"), headers: state.auth.respAuthHeader, contentType: "application/json; charset=utf-8"]) { response ->
         
 		//Check alarm state
-		sendEvent(name: "alarm", value: response.data.subscription.location.system.alarmState)
-		sendEvent(name: "status", value: response.data.subscription.location.system.alarmState)
+		sendEvent(name: "alarm", value: response.data.subscription.location.system.alarmState.toLowerCase())
+		sendEvent(name: "status", value: response.data.subscription.location.system.alarmState.toLowerCase())
 		// log.info "Alarm State1: $response.data.subscription.location.system.alarmState"
 		
 		//Check temperature
@@ -209,14 +203,16 @@ def poll() {
 		// log.info "Temperature: $response.data.subscription.location.system.temperature"
 		}
 		
-		//Set presence
-		def alarm_state = response.data.subscription.location.system.alarmState
-		def alarm_presence = ['OFF':'present', 'HOME':'present', 'AWAY':'not present']
+		//Set presence && virtual acceleration
+		def alarm_state = response.data.subscription.location.system.alarmState.toLowerCase()
+		if (alarm_state != device.currentValue("alarm")) {
+		
+		def alarm_presence = ['off':'present', 'home':'present', 'away':'not present']
 		sendEvent(name: 'presence', value: alarm_presence.getAt(alarm_state))
 	
-		//Set virtual acceleration
-		def alarm_acceleration = ['OFF':'inactive', 'HOME':'active', 'AWAY':'active']
+		def alarm_acceleration = ['off':'inactive', 'home':'active', 'away':'active']
 		sendEvent(name: 'acceleration', value: alarm_acceleration.getAt(alarm_state))
+		}
 		
 		//Check messages
        	if (settings.ssversion == "ss3") {
@@ -322,7 +318,9 @@ def apiLoginHandler(response, data) {
         mfaAuth()
         }
     } else {
-		state.errorData = null
+		state.remove("errorData")
+		state.remove("mfa_token")
+		state.remove("mfa_challenge")
 		initAuth() 
     }
 }
@@ -330,7 +328,7 @@ def apiLoginHandler(response, data) {
 
 def mfaAuth() {
     log.info "Executing MFA login..."
-	if (!state.mfa) {
+	if (!state.mfa_challenge) {
     def params = [
         uri: 'https://api.simplisafe.com',
         path: '/v1/api/mfa/challenge',
@@ -350,7 +348,7 @@ def mfaAuthHandler(response, data) {
         log.trace "response received error: ${response.getErrorMessage()}"
     } else {
 	    log.warn "MFA sent, check email"
-		state.mfa = "sent"
+		state.mfa_challenge = "sent"
     }
 }
 
